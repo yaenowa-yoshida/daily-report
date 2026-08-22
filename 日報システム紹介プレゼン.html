@@ -428,6 +428,9 @@
   }
 </style>
 
+</head>
+<body>
+
 <div class="deck">
   <div class="track" id="track">
 
@@ -455,7 +458,7 @@
 
         <div class="titlemeta">
           <span><span class="dot"></span>発表者：吉田 勝大</span>
-          <span><span class="dot"></span>PowerShell 製・完全ローカル動作</span>
+          <span><span class="dot"></span>PowerShell 製・すべてローカルで動作</span>
           <span><span class="dot"></span><a class="metalink" href="ユーザーマニュアル.xlsx">利用マニュアル（Excel）</a></span>
         </div>
       </div>
@@ -498,7 +501,7 @@
           <div class="card" style="border-color: var(--accent);">
             <h3 style="color: var(--accent);">この仕組み</h3>
             <p style="font-size: 1rem; color: var(--ink);">次の作業を宣言する → 作業する（記録は済んでいる）</p>
-            <p style="margin-top: 0.5rem;">15分区切りごとに「これからやること」を選ぶだけ。記憶には一切頼らない。</p>
+            <p style="margin-top: 0.5rem;">15分区切りごとに「これからやること」を選ぶだけ。記憶に頼らずに済む。</p>
           </div>
         </div>
         <p class="punch">日報は「書くもの」から「勝手に貯まるもの」へ。</p>
@@ -742,14 +745,14 @@ PRJ-12 商品ページ改修
         <p class="eyebrow">技術構成</p>
         <h2>Windows 標準機能だけで動く</h2>
         <div class="stats">
-          <div class="stat"><div class="n">1,927<span style="font-size:1rem;">行</span></div><div class="l">PowerShell 単一スクリプト（Windows Forms でGUI）</div></div>
+          <div class="stat"><div class="n">約1,900<span style="font-size:1rem;">行</span></div><div class="l">PowerShell 単一スクリプト（Windows Forms でGUI・2026年8月時点）</div></div>
           <div class="stat"><div class="n">0</div><div class="l">追加インストール・ライセンス費用・管理者権限</div></div>
           <div class="stat"><div class="n">15<span style="font-size:1rem;">分</span></div><div class="l">記録の粒度。1行=1枠でデータ構造も最小限</div></div>
-          <div class="stat"><div class="n">100<span style="font-size:1rem;">%</span></div><div class="l">ローカル動作。データは手元のCSVとテキストだけ</div></div>
+          <div class="stat"><div class="n">0<span style="font-size:1rem;">件</span></div><div class="l">外部との通信。記録はすべて手元のCSVとテキストに保存</div></div>
         </div>
         <ul class="points">
           <li>デスクトップのショートカット → バッチ → PowerShell スクリプトという<strong>最小構成</strong>。サーバーもインストールも不要。
-            <small>exe化とスタートアップ登録は組織のポリシー上使えないため、手動起動＋ショートカット自動生成に落ち着いた</small></li>
+            <small>実行ファイル形式（exe）と自動起動は、配布先の環境によっては使えないため見送り、手動起動＋ショートカット自動生成に落ち着いた</small></li>
           <li>スクリプトを直せば<strong>次回起動から反映</strong>。ビルド作業がないので、思いついた改善をその日に入れられる。</li>
           <li>開発・改修は <strong>Claude Code との対話</strong>で実施。「MTG中はウィンドウを出さないで」のような要望をそのまま実装に。</li>
         </ul>
@@ -762,7 +765,7 @@ PRJ-12 商品ページ改修
         <p class="eyebrow">まとめ</p>
         <h2>この仕組みがもたらしたもの</h2>
         <ul class="checks">
-          <li><strong>記憶に頼らない</strong> — 作業の前に宣言するから、抜け漏れ・思い出し作業がゼロに。</li>
+          <li><strong>記憶に頼らない</strong> — 作業の前に宣言するから、抜け漏れ・思い出し作業が起きにくくなる。</li>
           <li><strong>15分粒度のログが自動で貯まる</strong> — 月次報告・工数集計の元データがいつでも手元に。</li>
           <li><strong>運用の引っかかりを潰してある</strong> — MTG予約、過去日の編集、休憩の記録、トレイ常駐。</li>
           <li><strong>仕組みはテキストとCSVだけ</strong> — 誰でも読めて、他のメンバーにもそのまま展開できる。</li>
@@ -782,7 +785,7 @@ PRJ-12 商品ページ改修
         <div class="cards">
           <div class="card">
             <h3>私がやったこと</h3>
-            <p>「何に困っているか」「どう動いてほしいか」を日本語で伝える。会社のルールを伝える。出てきたコードと画面に目を通し、違和感をそのまま言う。</p>
+            <p>「何に困っているか」「どう動いてほしいか」を日本語で伝える。動作環境の制約を伝える。出てきたコードと画面に目を通し、違和感をそのまま言う。</p>
           </div>
           <div class="card">
             <h3>AIがやったこと</h3>
@@ -805,12 +808,12 @@ PRJ-12 商品ページ改修
         <p class="lead">仕様書のかわりに送ったのは、次の2通です。ここから始まりました。</p>
         <div class="cards" style="grid-template-columns: 1fr; gap: 0.9rem;">
           <div class="card">
-            <h3>1通目 — 困りごと</h3>
-            <p>「日報作成のサブエージェントを作成したい。毎日の作業を15分毎にどんな作業をしたかを報告しなきゃいけないんだよな。」</p>
+            <h3>1通目 — 困りごと（要旨）</h3>
+            <p>日報の作成をAIに任せられないか。15分単位で作業内容を記録・報告する必要がある。</p>
           </div>
           <div class="card">
-            <h3>2通目 — 解き方の提案<small style="display:block;font-weight:400;font-size:0.7rem;letter-spacing:0.04em;color:var(--muted);margin-top:0.2rem;">※ 原文の一部を、案件が特定されない表記に置き換えています</small></h3>
-            <p>「まずは15分単位で入力を要求してくるバッチにしない？　現在対応している案件と作業内容を入力させるウィンドウを表示。（前回入力を保持するチェックをつける）　OKボタンを押すとCSVファイルにして保存する。一日の入力結果が末尾に蓄積されていくイメージ。それを最後にエクセルへ自身で貼り付けたら日報ができるからいいと思うんだ」</p>
+            <h3>2通目 — 解き方の提案（要旨）</h3>
+            <p>まず15分単位で入力を求めるバッチにする。対応中の案件と作業内容を入力させるウィンドウを出し、前回の入力を保持するチェックをつける。OKを押すとCSVに保存し、一日の入力が末尾に積み上がっていく。最後にExcelへ貼り付ければ日報になる。</p>
           </div>
         </div>
         <ul class="points" style="margin-top: 1.2rem;">
@@ -884,7 +887,7 @@ PRJ-12 商品ページ改修
               </tr>
               <tr>
                 <td>「1つの実行ファイルにしたい」</td>
-                <td>exe化を実施 → <strong>社内ポリシーで実行がブロック</strong> → 元の方式へ差し戻し。経緯も記録に残した</td>
+                <td>exe化を実施 → <strong>生成した実行ファイルがセキュリティ製品に隔離される</strong> → 元の方式へ差し戻し。経緯も記録に残した</td>
               </tr>
               <tr>
                 <td>「マニュアルをExcelで作って」</td>
@@ -942,7 +945,7 @@ PRJ-12 商品ページ改修
         <h2>やってみて、分かったこと</h2>
         <ul class="checks">
           <li><strong>完璧な仕様はいらない</strong> — 使いながら決めるほうが、結果的に早く、実態に合う。</li>
-          <li><strong>環境の制約は、自分にしか分からない</strong> — 「exeは実行できない」「スタートアップは使えない」。伝えて初めて設計に反映される。</li>
+          <li><strong>環境の制約は、自分にしか分からない</strong> — 「実行ファイル形式は使えない」「自動起動は使えない」。伝えて初めて設計に反映される。</li>
           <li><strong>確認の仕組みとドキュメントを一緒に作らせる</strong> — 安心して直せるようになり、半年後の自分が助かる。</li>
           <li><strong>読めることが、そのまま速さになる</strong> — 出てきたものを確かめられるので、細部まで指示しなくても任せられる。自分で書くより速い。</li>
           <li><strong>AIは決めてくれない</strong> — 何を作るか、どこでやめるかを決めるのは、いつも人間の側。</li>
@@ -970,7 +973,7 @@ PRJ-12 商品ページ改修
               </tr>
               <tr>
                 <td>環境の前提を伝えない<br><small>手元で動かないものができあがる</small></td>
-                <td>会社のルールを都度伝えた。<strong>exe化は駄目と分かった時点で撤退</strong>し、記録だけ残した</td>
+                <td>動作環境の制約を都度伝えた。<strong>exe化は使えないと分かった時点で撤退</strong>し、記録だけ残した</td>
               </tr>
               <tr>
                 <td>「できました」を検収せずに信じる<br><small>動かない・要件を満たさないものが残る</small></td>
@@ -1057,7 +1060,7 @@ PRJ-12 商品ページ改修
           <div>
             <div class="card">
               <h3>どのAIでも変わらないこと</h3>
-              <p>「exeは実行できない」「スタートアップは使えない」——<strong>会社のルールは、伝えて初めて設計に反映される</strong>。休憩の仕様を3回変えたのも、使ってみた本人の判断だった。</p>
+              <p>「実行ファイル形式は使えない」「自動起動は使えない」——<strong>動作環境の制約は、伝えて初めて設計に反映される</strong>。休憩の仕様を3回変えたのも、使ってみた本人の判断だった。</p>
             </div>
             <p class="punch" style="margin-top: 1.4rem;">道具の差は「実行できるか」。<br>中身の差は、やはり人が決める。</p>
           </div>
@@ -1127,8 +1130,8 @@ PRJ-12 商品ページ改修
             <small>今回：最初の2通で、前回入力の保持・CSVへの蓄積・Excelへ貼る流れまで伝えていた</small></li>
           <li><strong>解き方を自分で決められるか</strong> — 提案を鵜呑みにせず方式を選び、やめる判断もできる。
             <small>今回：AIに書かせる案から、15分ごとの入力バッチへ切り替えた</small></li>
-          <li><strong>AIが知らない前提を渡せるか</strong> — 環境・社内ルール・これまでの経緯は、外からは見えない。
-            <small>今回：「exeは実行できない」「スタートアップは使えない」</small></li>
+          <li><strong>AIが知らない前提を渡せるか</strong> — 環境・運用上の制約・これまでの経緯は、外からは見えない。
+            <small>今回：「実行ファイル形式は使えない」「自動起動は使えない」</small></li>
           <li><strong>出てきたものを検収できるか</strong> — 動かして確かめる。読んで違和感に気づく。
             <small>今回：文字の折り返しの気持ち悪さを、CSSの指定（max-width）が原因だと特定して指摘した</small></li>
           <li><strong>渡していい情報の線引きができるか</strong> — 出せない情報を、渡さない・資料に載せない。
@@ -1211,4 +1214,5 @@ PRJ-12 商品ページ改修
   })();
 </script>
 
+</body>
 </html>
