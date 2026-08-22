@@ -1,0 +1,9 @@
+# 稼働記録（実データ）。公開リポジトリには絶対に入れない
+日報ログ/
+
+# Excel の一時ファイル
+~$*.xlsx
+
+# Windows / OneDrive が置くもの
+Thumbs.db
+desktop.ini

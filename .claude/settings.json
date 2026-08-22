@@ -1,0 +1,9 @@
+﻿{
+  "permissions": {
+    "allow": [
+      "PowerShell(powershell -NoProfile -ExecutionPolicy Bypass -File Nippo-Batch.ps1 -TestInit)",
+      "PowerShell(powershell -NoProfile -ExecutionPolicy Bypass -File Nippo-Batch.ps1 -Capture)",
+      "PowerShell(powershell -NoProfile -ExecutionPolicy Bypass -File ユーザーマニュアル生成.ps1)"
+    ]
+  }
+}

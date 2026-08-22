@@ -1,0 +1,1214 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>日報システム紹介 — 15分単位の日報を「あとで書かない」仕組みに</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;700&family=Shippori+Mincho:wght@400;500;600&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* 配色・書体は和文サイトの落ち着いたトンマナに合わせている。
+     紅（臙脂・桜）を基調に、生成りの紙色、明朝の見出し、角丸を使わない細い罫線が特徴。
+     オフラインではGoogle Fontsが読めないため、明朝・ゴシックとも日本語の代替書体を必ず指定する。 */
+  :root {
+    --bg: #fdf8f6;          /* paper */
+    --surface: #ffffff;
+    --surface-mid: #f5ede8; /* paper-mid */
+    --ink: #1a1a18;
+    --muted: #6b6b64;       /* ink-light */
+    --line: #ddc8be;        /* paper-dark */
+    --brand: #7a3a4a;       /* accent（臙脂） */
+    --brand-strong: #7a3a4a;
+    --brand-soft: #fdf0f2;  /* sakura-pale */
+    --brand-ink: #fdf8f6;
+    --accent: #c0606a;      /* sakura-deep */
+    --accent-soft: #f5d8dc; /* sakura-light */
+    --accent-ink: #7a3a4a;
+    --good: #3a6470;        /* accent-cool（藍の差し色） */
+    --mock-bg: #f5ede8;
+    --mock-bar: #f0d8d8;
+    --mock-line: #ddc8be;
+    --code-bg: #1a1a18;
+    --code-ink: #f5ede8;
+    --shadow: 0 10px 28px rgba(122, 58, 74, 0.09);
+    --font-body: "Noto Sans JP", "Yu Gothic UI", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+    --font-head: "Zen Old Mincho", "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "MS PMincho", serif;
+    --font-sub: "Shippori Mincho", "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", serif;
+    --font-mono: "Consolas", "SF Mono", "Courier New", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a18;          /* surface-inverse */
+      --surface: #24231f;
+      --surface-mid: #2e2c28;
+      --ink: #fdf8f6;         /* inverse-ink */
+      --muted: #b3ada3;
+      --line: #453f39;
+      --brand: #e8a0a8;       /* sakura-mid */
+      --brand-strong: #f0d8d8;
+      --brand-soft: #3a2a2d;
+      --brand-ink: #1a1a18;
+      --accent: #e8a0a8;
+      --accent-soft: #3a2a2d;
+      --accent-ink: #f5d8dc;
+      --good: #8fb6c0;
+      --mock-bg: #2e2c28;
+      --mock-bar: #3a3531;
+      --mock-line: #554e47;
+      --code-bg: #100f0e;
+      --code-ink: #e6ddd6;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #fdf8f6;
+    --surface: #ffffff;
+    --surface-mid: #f5ede8;
+    --ink: #1a1a18;
+    --muted: #6b6b64;
+    --line: #ddc8be;
+    --brand: #7a3a4a;
+    --brand-strong: #7a3a4a;
+    --brand-soft: #fdf0f2;
+    --brand-ink: #fdf8f6;
+    --accent: #c0606a;
+    --accent-soft: #f5d8dc;
+    --accent-ink: #7a3a4a;
+    --good: #3a6470;
+    --mock-bg: #f5ede8;
+    --mock-bar: #f0d8d8;
+    --mock-line: #ddc8be;
+    --code-bg: #1a1a18;
+    --code-ink: #f5ede8;
+    --shadow: 0 10px 28px rgba(122, 58, 74, 0.09);
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a1a18;
+    --surface: #24231f;
+    --surface-mid: #2e2c28;
+    --ink: #fdf8f6;
+    --muted: #b3ada3;
+    --line: #453f39;
+    --brand: #e8a0a8;
+    --brand-strong: #f0d8d8;
+    --brand-soft: #3a2a2d;
+    --brand-ink: #1a1a18;
+    --accent: #e8a0a8;
+    --accent-soft: #3a2a2d;
+    --accent-ink: #f5d8dc;
+    --good: #8fb6c0;
+    --mock-bg: #2e2c28;
+    --mock-bar: #3a3531;
+    --mock-line: #554e47;
+    --code-bg: #100f0e;
+    --code-ink: #e6ddd6;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-weight: 300;
+    font-size: clamp(15px, 1.35vw, 17px);
+    line-height: 1.8;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .deck { height: 100dvh; overflow: hidden; }
+  .track {
+    display: flex;
+    height: 100%;
+    transition: transform 0.45s cubic-bezier(0.22, 0.9, 0.3, 1);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .track { transition: none; }
+  }
+
+  .slide {
+    flex: 0 0 100%;
+    height: 100%;
+    overflow-y: auto;
+    display: flex;
+    padding: clamp(1.5rem, 4vw, 3.5rem);
+    padding-bottom: 6.5rem;
+  }
+  .inner { margin: auto; width: 100%; max-width: 1060px; }
+
+  .eyebrow {
+    font-family: var(--font-sub);
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    margin: 0 0 0.9rem;
+  }
+  /* 見出しは明朝＋字間広め。コーポレートサイトの .section-title に合わせている */
+  h1, h2 {
+    font-family: var(--font-head);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    font-feature-settings: "palt";
+    text-wrap: balance;
+    word-break: auto-phrase;
+    line-height: 1.4;
+    margin: 0 0 1.1rem;
+  }
+  h1 { font-size: clamp(2.1rem, 4.6vw, 3.2rem); }
+  h2 { font-size: clamp(1.45rem, 2.8vw, 2.1rem); }
+  /* 幅は .inner（1060px）に任せる。中途半端な max-width を掛けると折り返し位置が不自然になる。
+     日本語は単語の途中でも折り返されるので、句読点・かっこで区切れるようにしておく */
+  .lead {
+    font-family: var(--font-sub);
+    color: var(--muted); margin: 0 0 1.6rem;
+    line-break: strict; word-break: normal; overflow-wrap: normal; text-wrap: pretty;
+  }
+  .accent-text { color: var(--accent); }
+  strong { color: var(--brand-strong); font-weight: 500; }
+
+  .time { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  /* ---- cards ---- */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; margin: 1.4rem 0; }
+  /* カードは角丸なし・細罫＋左の桜色の縦線。サイトの .pain-item / .acc-item と同じ作法 */
+  .card {
+    background: var(--surface);
+    border: 0.5px solid var(--line);
+    border-left: 2px solid var(--accent-soft);
+    padding: 1.2rem 1.3rem;
+    box-shadow: var(--shadow);
+  }
+  .card h3 { margin: 0 0 0.5rem; font-family: var(--font-sub); font-size: 1.05rem; font-weight: 600; color: var(--brand-strong); font-feature-settings: "palt"; }
+  .card p { margin: 0; font-size: 0.92rem; color: var(--muted); }
+  .card .big { font-family: var(--font-head); font-size: 1.7rem; font-weight: 700; color: var(--brand); display: block; margin-bottom: 0.2rem; }
+
+  .punch {
+    margin-top: 1.6rem;
+    padding: 0.9rem 1.2rem;
+    border-left: 2px solid var(--accent);
+    background: var(--brand-soft);
+    color: var(--accent-ink);
+    font-family: var(--font-sub);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  /* ---- two-column ---- */
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1.2rem, 3vw, 2.6rem); align-items: start; }
+  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+
+  ul.points { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.85rem; }
+  ul.points li { padding-left: 1.6rem; position: relative; }
+  ul.points li::before {
+    content: "";
+    position: absolute; left: 0; top: 0.55em;
+    width: 0.85em; height: 0.28em;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  ul.points li small { display: block; color: var(--muted); font-size: 0.86rem; }
+
+  /* ---- slot strip (hero) ---- */
+  .slotstrip { margin: 2.2rem 0 0; }
+  .strip-row { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; }
+  .block {
+    height: 3.2rem;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.78rem; font-weight: 500; letter-spacing: 0.04em;
+    color: var(--brand-ink);
+    background: var(--brand);
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    padding: 0 0.5rem;
+  }
+  .block.alt { background: var(--brand); opacity: 0.72; }
+  .block.mtg { background: var(--accent); color: var(--brand-ink); opacity: 1; }
+  .block.empty { background: var(--surface); border: 1px dashed var(--mock-line); }
+  .strip-ticks { display: grid; grid-template-columns: repeat(12, 1fr); margin-top: 0.35rem; }
+  .strip-ticks span {
+    font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+    font-size: 0.72rem; color: var(--muted);
+    border-left: 1px solid var(--line); padding-left: 0.3rem;
+  }
+
+  /* ---- day flow ---- */
+  .flow { display: grid; gap: 0; margin-top: 1.4rem; }
+  .step { display: grid; grid-template-columns: 4.6rem 1.4rem 1fr; gap: 0 1rem; }
+  .step .t {
+    font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+    color: var(--brand); font-weight: 700; font-size: 0.95rem; text-align: right; padding-top: 0.15rem;
+  }
+  .step .rail { position: relative; }
+  .step .rail::before {
+    content: ""; position: absolute; left: 50%; top: 0.55rem; bottom: -0.55rem;
+    width: 2px; margin-left: -1px; background: var(--line);
+  }
+  .step:last-child .rail::before { display: none; }
+  .step .rail::after {
+    content: ""; position: absolute; left: 50%; top: 0.35rem;
+    width: 12px; height: 12px; margin-left: -6px;
+    border-radius: 50%;
+    background: var(--brand);
+    border: 2px solid var(--bg);
+  }
+  .step.hl .rail::after { background: var(--accent); }
+  .step .body { padding-bottom: 1.5rem; }
+  .step .body h3 { margin: 0 0 0.25rem; font-family: var(--font-sub); font-size: 1.08rem; font-weight: 600; font-feature-settings: "palt"; }
+  .step .body p { margin: 0; color: var(--muted); font-size: 0.92rem; max-width: 42em; }
+
+  /* ---- 実画面のスクリーンショット（画像\ 配下。-Capture で撮り直せる） ---- */
+  .shot {
+    display: block; max-width: 100%; height: auto;
+    border: 0.5px solid var(--line); box-shadow: var(--shadow);
+    background: var(--surface);
+  }
+  .shot + .cap, .shotrow + .cap { margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--muted); }
+  .shotrow { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
+  .shotrow .shot { flex: 1 1 240px; min-width: 0; }
+
+  /* ---- reservation strip ---- */
+  .rsv { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 4px; margin: 1.6rem 0 0.4rem; }
+  .rsv > div {
+    padding: 0.7rem 0.8rem; font-size: 0.84rem; text-align: center; font-weight: 500;
+  }
+  .rsv .on { background: var(--brand-soft); color: var(--brand-strong); border: 0.5px solid var(--line); }
+  .rsv .booked { background: var(--accent); color: var(--brand-ink); }
+  .rsv-caps { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 4px; font-size: 0.76rem; color: var(--muted); text-align: center; }
+
+  /* ---- table ---- */
+  .tablewrap { overflow-x: auto; border: 0.5px solid var(--line); background: var(--surface); box-shadow: var(--shadow); }
+  table.csv { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+  table.csv th, table.csv td { padding: 0.5rem 0.9rem; text-align: left; white-space: nowrap; }
+  /* 付録の説明用の表は文章が入るので折り返す（CSVサンプルの表は1行で見せたいので nowrap のまま） */
+  table.csv.wrap th, table.csv.wrap td { white-space: normal; padding: 0.45rem 0.9rem; line-height: 1.65; }
+  table.csv.wrap td small { display: block; color: var(--muted); font-size: 0.8rem; line-height: 1.6; margin-top: 0.15rem; }
+  table.csv th {
+    background: var(--brand); color: var(--brand-ink);
+    font-size: 0.78rem; letter-spacing: 0.08em;
+  }
+  table.csv td { border-top: 1px solid var(--line); }
+  table.csv td.time { color: var(--brand); font-weight: 700; }
+
+  /* ---- code / text file ---- */
+  pre.filetxt {
+    background: var(--code-bg); color: var(--code-ink);
+    font-family: var(--font-mono);
+    font-size: 0.82rem; line-height: 1.7;
+    padding: 1rem 1.2rem;
+    overflow-x: auto;
+    margin: 0;
+    box-shadow: var(--shadow);
+  }
+  pre.filetxt .cm { opacity: 0.55; }
+  pre.filetxt .hd { color: var(--accent); font-weight: 700; }
+  /* フォルダ構成。スペースで桁を揃えると和欧混在で崩れるので、2列のグリッドで揃える */
+  .tree {
+    display: grid; grid-template-columns: max-content 1fr; gap: 0.2rem 2rem;
+    background: var(--code-bg); color: var(--code-ink);
+    padding: 1.2rem 1.4rem; font-size: 0.86rem; line-height: 1.9;
+  }
+  .tree .f { font-family: var(--font-mono); white-space: nowrap; }
+  .tree .d { color: var(--mock-line); }
+
+  .fname {
+    display: inline-block;
+    font-family: var(--font-mono); font-size: 0.78rem;
+    background: var(--brand-soft); color: var(--brand-strong);
+    padding: 0.1rem 0.55rem; margin-bottom: 0.5rem;
+  }
+
+  /* ---- stats ---- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 1.6rem 0; }
+  .stat {
+    background: var(--surface); border: 0.5px solid var(--line); border-left: 2px solid var(--accent-soft);
+    padding: 1.1rem 1.2rem; box-shadow: var(--shadow);
+  }
+  .stat .n {
+    font-family: var(--font-head); font-variant-numeric: tabular-nums;
+    font-size: 2.1rem; font-weight: 700; color: var(--brand); line-height: 1.2;
+    letter-spacing: 0.02em;
+  }
+  .stat .l { font-size: 0.82rem; color: var(--muted); }
+
+  /* ---- 資料へのリンク（同じフォルダのマニュアルを開く） ---- */
+  .doclink {
+    display: inline-flex; align-items: baseline; gap: 0.6rem;
+    margin-top: 1.6rem; padding: 0.8rem 1.3rem;
+    background: var(--surface);
+    border: 0.5px solid var(--line); border-left: 2px solid var(--accent);
+    box-shadow: var(--shadow);
+    color: var(--brand-strong); text-decoration: none;
+    font-family: var(--font-sub); font-weight: 600; letter-spacing: 0.04em;
+  }
+  .doclink::before { content: "▸"; color: var(--accent); }
+  .doclink small { font-family: var(--font-body); font-weight: 300; color: var(--muted); letter-spacing: 0; }
+  .doclink:hover, .doclink:focus-visible { background: var(--brand-soft); border-left-color: var(--brand); }
+
+  /* ---- summary ---- */
+  .checks { list-style: none; padding: 0; margin: 1.4rem 0; display: grid; gap: 0.9rem; }
+  .checks li { padding-left: 2rem; position: relative; font-size: 1.05rem; }
+  .checks li small { display: block; color: var(--muted); font-size: 0.82rem; line-height: 1.7; margin-top: 0.1rem; }
+  .checks li::before {
+    content: "✓";
+    position: absolute; left: 0; top: 0;
+    color: var(--accent); font-weight: 700;
+  }
+  .closing {
+    margin-top: 2.2rem;
+    font-family: var(--font-head);
+    font-size: clamp(1.3rem, 2.6vw, 1.9rem);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    font-feature-settings: "palt";
+    color: var(--brand-strong);
+    text-wrap: balance;
+  }
+
+  .titlemeta { display: flex; gap: 1.5rem; flex-wrap: wrap; color: var(--muted); font-size: 0.9rem; margin-top: 1.8rem; }
+  .titlemeta span { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .titlemeta .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; }
+  .metalink { color: var(--brand-strong); text-decoration: underline; text-underline-offset: 0.25em; text-decoration-color: var(--line); }
+  .metalink:hover, .metalink:focus-visible { color: var(--accent); text-decoration-color: var(--accent); }
+
+  /* ---- footer nav ---- */
+  .navbar {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    height: 4.4rem;
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0 clamp(1rem, 3vw, 2.2rem);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid var(--line);
+    z-index: 10;
+  }
+  .navbtn {
+    width: 2.4rem; height: 2.4rem;
+    border-radius: 50%;
+    border: 0.5px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 1rem;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex: 0 0 auto;
+  }
+  .navbtn:hover { border-color: var(--brand); color: var(--brand); }
+  .navbtn:focus-visible, .tick:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .clock {
+    font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+    font-weight: 700; font-size: 1.05rem; color: var(--brand);
+    min-width: 4.2em;
+  }
+  .clock small { display: block; font-weight: 400; font-size: 0.68rem; color: var(--muted); }
+  .ruler { flex: 1; display: flex; align-items: flex-end; gap: 6px; height: 2rem; }
+  .tick {
+    flex: 1; height: 0.7rem; min-width: 8px;
+    border: none;
+    background: var(--line);
+    cursor: pointer; padding: 0;
+  }
+  .tick.hour { height: 1.05rem; }
+  .tick[aria-current="true"] { background: var(--accent); height: 1.5rem; }
+  .keyhint { font-size: 0.72rem; color: var(--muted); flex: 0 0 auto; }
+  @media (max-width: 700px) { .keyhint { display: none; } }
+
+  /* ---- print ---- */
+  @media print {
+    body { overflow: visible; }
+    .deck { height: auto; overflow: visible; }
+    .track { display: block; transform: none !important; }
+    .slide { height: auto; min-height: 96vh; overflow: visible; page-break-after: always; padding-bottom: 2rem; }
+    .navbar { display: none; }
+  }
+</style>
+
+<div class="deck">
+  <div class="track" id="track">
+
+    <!-- 1. タイトル -->
+    <section class="slide" aria-roledescription="スライド" aria-label="1/24 タイトル">
+      <div class="inner">
+        <p class="eyebrow">業務改善の取り組み ／ 日報システム紹介</p>
+        <h1>日報を、<span class="accent-text">あとで書かない</span>。</h1>
+        <p class="lead">15分単位で「これからやる作業」を先に記録する、自作の日報システムです。<br>一日が終わる頃には、日報はもう出来上がっています。</p>
+
+        <div class="slotstrip" aria-hidden="true">
+          <div class="strip-row">
+            <div class="block" style="grid-column: span 4;">案件A｜API設計</div>
+            <div class="block alt" style="grid-column: span 2;">案件A｜レビュー</div>
+            <div class="block mtg" style="grid-column: span 3;">MTG｜週次定例</div>
+            <div class="block" style="grid-column: span 2;">案件B｜改修</div>
+            <div class="block empty" style="grid-column: span 1;"></div>
+          </div>
+          <div class="strip-ticks">
+            <span style="grid-column: 1;">9:00</span>
+            <span style="grid-column: 5;">10:00</span>
+            <span style="grid-column: 9;">11:00</span>
+          </div>
+        </div>
+
+        <div class="titlemeta">
+          <span><span class="dot"></span>発表者：吉田 勝大</span>
+          <span><span class="dot"></span>PowerShell 製・完全ローカル動作</span>
+          <span><span class="dot"></span><a class="metalink" href="ユーザーマニュアル.xlsx">利用マニュアル（Excel）</a></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 課題 -->
+    <section class="slide" aria-roledescription="スライド" aria-label="2/24 課題">
+      <div class="inner">
+        <p class="eyebrow">課題</p>
+        <h2>日報の「よくある困りごと」</h2>
+        <div class="cards">
+          <div class="card">
+            <h3>思い出せない</h3>
+            <p>終業時にまとめて書こうとすると、午前中に何をしていたかはもう記憶が曖昧。日報の精度が日々落ちていく。</p>
+          </div>
+          <div class="card">
+            <h3>粒度が粗くなる</h3>
+            <p>「終日：開発」のような一行になりがち。月次報告や工数集計に使おうとしても、案件別の内訳が出せない。</p>
+          </div>
+          <div class="card">
+            <h3>書くこと自体が負担</h3>
+            <p>一日の最後に残る「重いタスク」になり、後回し・書き忘れが起きる。翌日まとめて書くと精度はさらに下がる。</p>
+          </div>
+        </div>
+        <p class="punch">原因はひとつ。「あとで、思い出して書く」から。</p>
+      </div>
+    </section>
+
+    <!-- 3. アプローチ -->
+    <section class="slide" aria-roledescription="スライド" aria-label="3/24 アプローチ">
+      <div class="inner">
+        <p class="eyebrow">アプローチ</p>
+        <h2>「思い出して書く」から、<br>「始める前に宣言する」へ</h2>
+        <div class="cols" style="margin-top: 1.6rem;">
+          <div class="card">
+            <h3>従来の日報</h3>
+            <p style="font-size: 1rem; color: var(--ink);">作業する → 記憶をたどる → 日報を書く</p>
+            <p style="margin-top: 0.5rem;">記録の品質が「記憶力」と「終業時の余力」に依存する。</p>
+          </div>
+          <div class="card" style="border-color: var(--accent);">
+            <h3 style="color: var(--accent);">この仕組み</h3>
+            <p style="font-size: 1rem; color: var(--ink);">次の作業を宣言する → 作業する（記録は済んでいる）</p>
+            <p style="margin-top: 0.5rem;">15分区切りごとに「これからやること」を選ぶだけ。記憶には一切頼らない。</p>
+          </div>
+        </div>
+        <p class="punch">日報は「書くもの」から「勝手に貯まるもの」へ。</p>
+      </div>
+    </section>
+
+    <!-- 4. 一日の流れ -->
+    <section class="slide" aria-roledescription="スライド" aria-label="4/24 一日の流れ">
+      <div class="inner">
+        <p class="eyebrow">全体像</p>
+        <h2>一日の流れ</h2>
+        <div class="flow">
+          <div class="step">
+            <div class="t time">起動</div>
+            <div class="rail"></div>
+            <div class="body">
+              <h3>デスクトップのアイコンをダブルクリック</h3>
+              <p>朝いちばんに起動して「業務開始」を押した瞬間から記録が始まる。ショートカットは初回起動時にデスクトップへ自動で用意され、消えても起動のたびに作り直される。</p>
+            </div>
+          </div>
+          <div class="step hl">
+            <div class="t time">日中</div>
+            <div class="rail"></div>
+            <div class="body">
+              <h3>2つのウィンドウで運用</h3>
+              <p><strong>入力ウィンドウ</strong>が15分区切りごとに現れ、次の作業を宣言。<strong>日報メニュー</strong>（常駐の小窓）からは編集・MTG予約がいつでもできる。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="t time">終業</div>
+            <div class="rail"></div>
+            <div class="body">
+              <h3>表を確認して「締め」</h3>
+              <p>業務終了は任意のタイミングでOK。一日の記録全体が表で表示され、最終確認・修正をして「締め」ボタンでCSVを保存。キャンセルすれば通常運転に戻る。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="t time">月次</div>
+            <div class="rail"></div>
+            <div class="body">
+              <h3>報告書の元データが揃っている</h3>
+              <p>15分粒度・案件別のCSVが日々貯まっているので、月次報告書への転記は集計するだけ。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. 入力ウィンドウ -->
+    <section class="slide" aria-roledescription="スライド" aria-label="5/24 入力ウィンドウ">
+      <div class="inner">
+        <p class="eyebrow">画面① 入力ウィンドウ</p>
+        <h2>15分ごとに、選ぶのは3つだけ</h2>
+        <div class="cols">
+          <div>
+            <img class="shot" src="画像/入力ウィンドウ.png" alt="入力ウィンドウ。対象時間帯の表示、案件・作業内容・記録する時間の選択、記録(OK)・スキップ・休憩・業務終了のボタンが並ぶ">
+            <p class="cap">15分区切りごとに、これだけが出てくる。</p>
+          </div>
+          <ul class="points">
+            <li>15分区切りのタイミングで<strong>自動表示</strong>。書きに行くのではなく、向こうから来る。
+              <small>宣言した時間（15〜120分）のあいだは表示されない</small></li>
+            <li>案件・作業内容は<strong>選択式</strong>。迷わず数秒で完了。</li>
+            <li>新しい作業名は直接入力すればOK。<strong>次回から選択肢に自動追加</strong>される。</li>
+            <li><strong>休憩は長さを決めない</strong>。押すと「休憩中」の窓が出て待機し、戻って「休憩完了」を押した時点までが休憩として記録される。
+              <small>15分未満なら記録なし。押し間違えてもデータは汚れない</small></li>
+            <li>MTG予約済みの時間帯には<strong>出てこない</strong>。会議の邪魔をしない。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. 日報メニュー -->
+    <section class="slide" aria-roledescription="スライド" aria-label="6/24 日報メニュー">
+      <div class="inner">
+        <p class="eyebrow">画面② 日報メニュー</p>
+        <h2>常駐の小窓から、いつでも5操作</h2>
+        <div class="cols">
+          <div>
+            <img class="shot" src="画像/日報メニュー.png" alt="日報メニュー。日付の選択と編集ボタン、MTG予約・休憩・選択肢の編集・業務終了のボタンが縦に並ぶ小窓">
+            <p class="cap">× で閉じてもタスクトレイに常駐。右クリックでいつでも再表示。</p>
+            <img class="shot" src="画像/休憩中.png" alt="休憩中ウィンドウ。開始時刻と経過分数が表示され、休憩完了ボタンがある" style="margin-top: 1rem;">
+            <p class="cap">「休憩」を押すと出る窓。戻って押した時点までが記録される。</p>
+          </div>
+          <ul class="points">
+            <li><strong>編集</strong> — 日報ログのある日付を選び、時刻×案件×作業内容の表をその場で修正。
+              <small>過去の日付も直せる（次のスライド）</small></li>
+            <li><strong>MTG予約</strong> — 当日の先の時間枠を、会議の予定で事前に確保。</li>
+            <li><strong>休憩</strong> — 入力ウィンドウを待たずに休憩へ。戻って「休憩完了」を押した時点までが記録される。</li>
+            <li><strong>選択肢の編集</strong> — 案件・作業内容の候補をその場で整理（後半のスライド）。</li>
+            <li><strong>業務終了</strong> — いつでも締め処理へ。入力ウィンドウ・トレイアイコンからも同じ操作ができる。
+              <small>3つの入口はどれも同じ表記・同じ挙動で揃えてある</small></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. 一覧編集 -->
+    <section class="slide" aria-roledescription="スライド" aria-label="7/24 一覧編集">
+      <div class="inner">
+        <p class="eyebrow">画面③ 一覧編集</p>
+        <h2>あとから直せるから、迷わず記録できる</h2>
+        <div class="cols">
+          <div>
+            <img class="shot" src="画像/一覧編集.png" alt="一覧編集ウィンドウ。時刻・案件・作業内容の表と、選択した行に入力・クリア・この行を入力欄へコピーのボタン">
+            <p class="cap">「編集」で開く一日の記録表。業務終了時の確認画面も同じもの。</p>
+          </div>
+          <ul class="points">
+            <li>日報ログのある<strong>どの日付でも</strong>開ける。入力し忘れた枠の穴埋めも、過去日の修正もここで完結。</li>
+            <li>「この行を入力欄へコピー」→「選択した行に入力」で、同じ作業を<strong>マウス操作だけで複製</strong>できる。
+              <small>ドロップダウンを触らずに、まとまった時間の記録を一気に埋められる</small></li>
+            <li>空欄にすればその枠の記録を削除。<strong>MTG予約の取り消し</strong>もここから行う。</li>
+            <li>保存すると時刻順に並べ直してCSVを書き直す。
+              <small>ExcelでCSVを開いて書式が変わっても、読み込み側で吸収するので壊れない</small></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. MTG予約 -->
+    <section class="slide" aria-roledescription="スライド" aria-label="8/24 MTG予約">
+      <div class="inner">
+        <p class="eyebrow">画面④ MTG予約</p>
+        <h2>会議が始まる瞬間に、入力を求めない</h2>
+        <p class="lead">15分ごとにウィンドウが出る仕組みの最大の弱点は「会議中に出てくること」。そこで、会議は先に枠を予約しておく方式にしました。</p>
+
+        <div class="rsv" aria-hidden="true">
+          <div class="on">入力ウィンドウ表示</div>
+          <div class="booked">MTG予約済み（表示なし）</div>
+          <div class="on">入力ウィンドウ再開</div>
+        </div>
+        <div class="rsv-caps" aria-hidden="true">
+          <span class="time">〜13:30</span>
+          <span class="time">13:30〜14:30</span>
+          <span class="time">14:30〜</span>
+        </div>
+
+        <div class="shotrow" style="margin-top: 1.4rem;">
+          <img class="shot" src="画像/MTG予約.png" alt="MTG予約ウィンドウ。開始時刻・時間・案件・作業内容を指定して予約するダイアログ" style="max-width: 420px;">
+          <ul class="points" style="margin: 0; flex: 1 1 300px;">
+            <li>開始時刻・時間（30分か60分）・案件・作業内容を指定して<strong>先の枠を記録</strong>。</li>
+            <li>予約した時間帯は入力ウィンドウが<strong>スキップ</strong>される。会議に集中でき、記録はすでに済んでいる。</li>
+            <li>予定が消えたら「編集」で該当枠をクリアするだけ。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. データ形式 -->
+    <section class="slide" aria-roledescription="スライド" aria-label="9/24 データ形式">
+      <div class="inner">
+        <p class="eyebrow">データ</p>
+        <h2>成果物は、素直なCSV</h2>
+        <p class="lead">1日1ファイル・1行=15分枠。UTF-8（BOM付き）なので Excel でそのまま開けます。</p>
+        <span class="fname">日報ログ\日報ログ_2026-07-31.csv</span>
+        <div class="tablewrap">
+          <table class="csv">
+            <thead>
+              <tr><th>日付</th><th>時刻</th><th>案件</th><th>作業内容</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>2026/07/31</td><td class="time">9:00</td><td>案件A</td><td>API設計レビュー</td></tr>
+              <tr><td>2026/07/31</td><td class="time">9:15</td><td>案件A</td><td>API設計レビュー</td></tr>
+              <tr><td>2026/07/31</td><td class="time">9:30</td><td>案件A</td><td>PRJ-12 商品ページ改修</td></tr>
+              <tr><td>2026/07/31</td><td class="time">9:45</td><td>社内</td><td>週次定例MTG</td></tr>
+              <tr><td>2026/07/31</td><td class="time">12:00</td><td>その他</td><td>休憩</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <ul class="points" style="margin-top: 1.4rem;">
+          <li>ピボット集計するだけで<strong>案件別・作業別の工数</strong>が出る。月次報告の元データに直結。</li>
+          <li>休憩も<strong>1行として残る</strong>ので、空白が「入力し忘れ」なのか「休んでいた」のか後から迷わない。</li>
+          <li>特別なDBもクラウドも不要。<strong>ただのファイル</strong>なので壊れず、いつでも読める。
+            <small>Excelで開いて保存し、日付の書式が変わっても読み込み側で吸収する</small></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 10. マスタ管理 -->
+    <section class="slide" aria-roledescription="スライド" aria-label="10/24 マスタ管理">
+      <div class="inner">
+        <p class="eyebrow">設定</p>
+        <h2>マスタはテキスト2つ、手入れは画面から</h2>
+        <div class="cols">
+          <div>
+            <span class="fname">日報設定\作業名.txt</span>
+            <pre class="filetxt"><span class="cm"># 見出しの前は全案件で共通表示</span>
+社内MTG
+資料作成
+
+<span class="hd">[案件A]</span>
+API設計
+PRJ-12 商品ページ改修
+
+<span class="hd">[案件B]</span>
+運用保守</pre>
+            <img class="shot" src="画像/選択肢の編集.png" alt="選択肢の編集ウィンドウ。左に案件の一覧、右にその案件の作業内容の一覧、それぞれに追加・名前変更・削除・並べ替えのボタンが並ぶ" style="margin-top: 1rem;">
+            <p class="cap">同じ2ファイルを画面から編集する「選択肢の編集」。</p>
+          </div>
+          <ul class="points">
+            <li><strong>案件.txt</strong> と <strong>作業名.txt</strong> の2ファイルだけ。# でコメントも書ける。</li>
+            <li>作業名は <strong>[案件名] の見出しでグループ化</strong>。選択中の案件の作業名（＋共通分）だけが選択肢に出る。</li>
+            <li><strong>表示のたびに再読込</strong>。メモ帳で編集すれば、次のウィンドウから即反映。</li>
+            <li>ウィンドウで直接入力した新しい作業名は、該当案件のセクションに<strong>自動追記</strong>される。
+              <small>放っておいても候補は育つ。整理したくなったときだけ手を入れる</small></li>
+            <li><strong>「選択肢の編集」</strong>で、追加・名前変更・削除・並べ替え・別案件への移動が画面から可能。書き戻しても<strong>コメント行は残す</strong>。</li>
+            <li>名前変更・削除で変わるのは<strong>次回からの選択肢だけ</strong>。過去のCSVは当時の表記のまま残す。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11. フォルダ構成 -->
+    <section class="slide" aria-roledescription="スライド" aria-label="11/24 フォルダ構成">
+      <div class="inner">
+        <p class="eyebrow">構成</p>
+        <h2>中身は、このフォルダひとつ</h2>
+        <p class="lead">インストールも設定画面もありません。このフォルダを丸ごと渡せば、そのまま動きます。</p>
+        <div class="tree">
+          <span class="f">日報記録\</span><span class="d"></span>
+          <span class="f">├ 日報入力.bat</span><span class="d">起動用（デスクトップのショートカットの実体）</span>
+          <span class="f">├ Nippo-Batch.ps1</span><span class="d">プログラム本体。修正するのはここだけ</span>
+          <span class="f">├ ユーザーマニュアル.xlsx</span><span class="d">利用者向けの使い方</span>
+          <span class="f">├ ユーザーマニュアル生成.ps1</span><span class="d">↑を作り直すスクリプト（本文はこちらが持つ）</span>
+          <span class="f">├ 日報システム紹介プレゼン.html</span><span class="d">この資料</span>
+          <span class="f">├ README.md</span><span class="d">構成・保守メモ（引き継ぎ用）</span>
+          <span class="f">├ 日報ログ\</span><span class="d">出力。1日1ファイルのCSV</span>
+          <span class="f">├ 日報設定\</span><span class="d">案件.txt ／ 作業名.txt</span>
+          <span class="f">└ 画像\</span><span class="d">資料に貼る画面のスクリーンショット</span>
+        </div>
+        <ul class="points" style="margin-top: 1.4rem;">
+          <li><strong>フォルダごと持ち運べる</strong> — ログも設定も、スクリプトと同じ場所を見に行く。移動しても動く。</li>
+          <li><strong>人が読めるものしかない</strong> — CSVとテキストとPowerShell。専用の形式もデータベースもない。</li>
+          <li><strong>資料も同じ場所に置く</strong> — マニュアルとこの資料を一緒に渡せば、それだけで引き継げる。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 12. 技術構成 -->
+    <section class="slide" aria-roledescription="スライド" aria-label="12/24 技術構成">
+      <div class="inner">
+        <p class="eyebrow">技術構成</p>
+        <h2>Windows 標準機能だけで動く</h2>
+        <div class="stats">
+          <div class="stat"><div class="n">1,236<span style="font-size:1rem;">行</span></div><div class="l">PowerShell 単一スクリプト（Windows Forms でGUI）</div></div>
+          <div class="stat"><div class="n">0</div><div class="l">追加インストール・ライセンス費用・管理者権限</div></div>
+          <div class="stat"><div class="n">15<span style="font-size:1rem;">分</span></div><div class="l">記録の粒度。1行=1枠でデータ構造も最小限</div></div>
+          <div class="stat"><div class="n">100<span style="font-size:1rem;">%</span></div><div class="l">ローカル動作。データは手元のCSVとテキストだけ</div></div>
+        </div>
+        <ul class="points">
+          <li>デスクトップのショートカット → バッチ → PowerShell スクリプトという<strong>最小構成</strong>。サーバーもインストールも不要。
+            <small>exe化とスタートアップ登録は組織のポリシー上使えないため、手動起動＋ショートカット自動生成に落ち着いた</small></li>
+          <li>スクリプトを直せば<strong>次回起動から反映</strong>。ビルド作業がないので、思いついた改善をその日に入れられる。</li>
+          <li>開発・改修は <strong>Claude Code との対話</strong>で実施。「MTG中はウィンドウを出さないで」のような要望をそのまま実装に。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 13. まとめ -->
+    <section class="slide" aria-roledescription="スライド" aria-label="13/24 まとめ">
+      <div class="inner">
+        <p class="eyebrow">まとめ</p>
+        <h2>この仕組みがもたらしたもの</h2>
+        <ul class="checks">
+          <li><strong>記憶に頼らない</strong> — 作業の前に宣言するから、抜け漏れ・思い出し作業がゼロに。</li>
+          <li><strong>15分粒度のログが自動で貯まる</strong> — 月次報告・工数集計の元データがいつでも手元に。</li>
+          <li><strong>運用の引っかかりを潰してある</strong> — MTG予約、過去日の編集、休憩の記録、トレイ常駐。</li>
+          <li><strong>仕組みはテキストとCSVだけ</strong> — 誰でも読めて、他のメンバーにもそのまま展開できる。</li>
+        </ul>
+        <p class="closing">日報は、書くものから「貯まるもの」へ。</p>
+        <p style="margin: 0;"><a class="doclink" href="ユーザーマニュアル.xlsx">利用マニュアル　<small>この資料と同じ「日報記録」フォルダにあります</small></a></p>
+        <p class="cap" style="margin: 0.6rem 0 0;">※ ブラウザからクリックするとダウンロードになります。編集して使うときは、フォルダの「ユーザーマニュアル.xlsx」を直接開いてください。</p>
+      </div>
+    </section>
+
+    <!-- 14. 付録 AIとの作り方 -->
+    <section class="slide" aria-roledescription="スライド" aria-label="14/24 付録 AIとの作り方">
+      <div class="inner">
+        <p class="eyebrow">APPENDIX A ／ 作り方</p>
+        <h2>この仕組みは、どう作ったか</h2>
+        <p class="lead">私は元エンジニアなので、コードは読めますし、調べれば書けます。ただ、いまは開発が本業ではありません。<br>そこでClaude Code（対話型のAI開発ツール）と話しながら、書く側ではなく<strong>確かめる側</strong>に回って作りました。仕様書はつくっていません。</p>
+        <div class="cards">
+          <div class="card">
+            <h3>私がやったこと</h3>
+            <p>「何に困っているか」「どう動いてほしいか」を日本語で伝える。会社のルールを伝える。出てきたコードと画面に目を通し、違和感をそのまま言う。</p>
+          </div>
+          <div class="card">
+            <h3>AIがやったこと</h3>
+            <p>PowerShellでの実装、既存コードの整理、動作確認の仕組みづくり、マニュアル・このスライドの作成。</p>
+          </div>
+          <div class="card">
+            <h3>決めるのは人間</h3>
+            <p>何を作るか、どこで妥協するかは、使っている本人にしか決められない。AIは提案はするが、決めてはくれない。</p>
+          </div>
+        </div>
+        <p class="punch">「作ってもらう」のではなく、「相談しながら育てる」。</p>
+      </div>
+    </section>
+
+    <!-- 15. 付録 出発点 -->
+    <section class="slide" aria-roledescription="スライド" aria-label="15/24 付録 出発点">
+      <div class="inner">
+        <p class="eyebrow">APPENDIX A ／ 出発点</p>
+        <h2>最初に伝えたのは、この2つだけ</h2>
+        <p class="lead">仕様書のかわりに送ったのは、次の2通です。ここから始まりました。</p>
+        <div class="cards" style="grid-template-columns: 1fr; gap: 0.9rem;">
+          <div class="card">
+            <h3>1通目 — 困りごと</h3>
+            <p>「日報作成のサブエージェントを作成したい。毎日の作業を15分毎にどんな作業をしたかを報告しなきゃいけないんだよな。」</p>
+          </div>
+          <div class="card">
+            <h3>2通目 — 解き方の提案</h3>
+            <p>「まずは15分単位で入力を要求してくるバッチにしない？　現在対応しているブランドと作業内容を入力させるウィンドウを表示。（前回入力を保持するチェックをつける）　OKボタンを押すとCSVファイルにして保存する。一日の入力結果が末尾に蓄積されていくイメージ。それを最後にエクセルへ自身で貼り付けたら日報ができるからいいと思うんだ」</p>
+          </div>
+        </div>
+        <ul class="points" style="margin-top: 1.2rem;">
+          <li>1通目は困りごとだけ。2通目で<strong>「AIに書かせる」から「15分ごとに入力させる仕組み」へ方式を切り替えた</strong>。ここは人が決めている。</li>
+          <li>この時点で<strong>芯になる要件は出そろっていた</strong> — 前回入力の保持、CSVへの末尾蓄積、Excelへ貼って完成という流れ。いまも変わっていない。</li>
+          <li>休憩・MTG予約・一覧編集は、<strong>使いながらあとから足した</strong>もの。最初から全部を決めてはいない。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 16. 付録 進め方 -->
+    <section class="slide" aria-roledescription="スライド" aria-label="16/24 付録 進め方">
+      <div class="inner">
+        <p class="eyebrow">APPENDIX A ／ 進め方</p>
+        <h2>短いやり取りを、何度も回す</h2>
+        <div class="flow">
+          <div class="step">
+            <div class="t time">相談</div>
+            <div class="rail"></div>
+            <div class="body">
+              <h3>困りごとと、解き方の見当を伝える</h3>
+              <p>最初は「日報を任せられないか」。すぐに「15分ごとに入力を求める仕組みでいい」と方式を切り替えた。設計書は書かないが、<strong>どう解くかは自分で決めている</strong>。</p>
+            </div>
+          </div>
+          <div class="step hl">
+            <div class="t time">実装</div>
+            <div class="rail"></div>
+            <div class="body">
+              <h3>その場で動くものが出てくる</h3>
+              <p>コードが書かれ、すぐ試せる。気に入らなければ言い直す。1回で完成させようとしないのがコツ。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="t time">確認</div>
+            <div class="rail"></div>
+            <div class="body">
+              <h3>壊れていないかを毎回みる</h3>
+              <p>設定の読み込み・CSVの書き込み・記録の重複防止などを自動で検証する仕組みを最初に作らせた。直すたびに走らせるので、安心して手を入れられる。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="t time">記録</div>
+            <div class="rail"></div>
+            <div class="body">
+              <h3>決めた理由・やめた理由を残す</h3>
+              <p>「なぜこの形にしたか」をAIがドキュメントに書き足していく。次に触るとき、同じ検討を繰り返さずに済む。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 17. 付録 実例 -->
+    <section class="slide" aria-roledescription="スライド" aria-label="17/24 付録 実例">
+      <div class="inner">
+        <p class="eyebrow">APPENDIX A ／ 実例</p>
+        <h2>こう言ったら、こうなった</h2>
+        <div class="tablewrap">
+          <table class="csv wrap">
+            <thead>
+              <tr><th style="width: 30%;">伝えたこと</th><th>起きたこと</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>「休憩ボタンを配置して」</td>
+                <td>ボタンを追加 → 使ってみて「長さは戻ってから決めたい」と伝え、<strong>その場で方式ごと作り直し</strong></td>
+              </tr>
+              <tr>
+                <td>「機能ごとにIDを振って、同じ挙動にして」</td>
+                <td>入力画面・メニュー・トレイの3つの入口が<strong>同じ定義を呼ぶ構造</strong>に。ボタン名のズレも消えた</td>
+              </tr>
+              <tr>
+                <td>「1つの実行ファイルにしたい」</td>
+                <td>exe化を実施 → <strong>社内ポリシーで実行がブロック</strong> → 元の方式へ差し戻し。経緯も記録に残した</td>
+              </tr>
+              <tr>
+                <td>「マニュアルをExcelで作って」</td>
+                <td>生成スクリプトを作成。<strong>画面の写真も自動で撮る</strong>ので、UIを変えたら撮り直すだけ</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ul class="points" style="margin-top: 1.4rem;">
+          <li>途中で気が変わってもよい。<strong>使ってみて初めて分かること</strong>のほうが多い。</li>
+          <li>うまくいかなかったことも含めて残す。<strong>同じ失敗を繰り返さない</strong>ための記録になる。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 18. 付録 AIから見た評価 -->
+    <section class="slide" aria-roledescription="スライド" aria-label="18/24 付録 AIから見た評価">
+      <div class="inner">
+        <p class="eyebrow">APPENDIX B ／ 評価</p>
+        <h2>AIから見た、この進め方の評価</h2>
+        <p class="lead">実際に手を動かした側から見て、この開発が最後まで崩れなかった理由は、次の6点にあります。</p>
+        <div class="cards">
+          <div class="card">
+            <h3>出口から逆算していた</h3>
+            <p>15分単位・案件×作業内容という粒度は、「月次報告書へ転記する」という出口から決まっている。<strong>作りながら仕様が揺れなかった最大の理由</strong>。</p>
+          </div>
+          <div class="card">
+            <h3>要件を小分けに出した</h3>
+            <p>一度に全部を伝えず、1機能ずつ。手戻りが小さく、<strong>毎回「動くもの」が残った</strong>。大きく作ってから直すより速い。</p>
+          </div>
+          <div class="card">
+            <h3>やめる判断が早い</h3>
+            <p>exe化もスタートアップ登録も、使えないと分かった時点で撤退。<strong>粘らずに戻し、試した記録だけ残した</strong>。</p>
+          </div>
+          <div class="card">
+            <h3>自動化の線引きが的確</h3>
+            <p>月1回の転記は手作業のまま。<strong>毎回繰り返すもの（検証・マニュアル・画面撮影）だけ</strong>を自動化した。何でも自動化しなかった。</p>
+          </div>
+          <div class="card">
+            <h3>データを閉じ込めなかった</h3>
+            <p>CSVとテキストだけ。専用の形式もデータベースも使っていないので、<strong>この道具が無くなっても記録は読める</strong>。</p>
+          </div>
+          <div class="card">
+            <h3>使う人と作る人が同じ</h3>
+            <p>使って感じた違和感が、その日のうちに修正になる。<strong>ふつうの開発では失われる速さ</strong>が、そのまま活きた。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 19. 付録 わかったこと -->
+    <section class="slide" aria-roledescription="スライド" aria-label="19/24 付録 わかったこと">
+      <div class="inner">
+        <p class="eyebrow">APPENDIX B ／ わかったこと</p>
+        <h2>やってみて、分かったこと</h2>
+        <ul class="checks">
+          <li><strong>完璧な仕様はいらない</strong> — 使いながら決めるほうが、結果的に早く、実態に合う。</li>
+          <li><strong>環境の制約は、自分にしか分からない</strong> — 「exeは実行できない」「スタートアップは使えない」。伝えて初めて設計に反映される。</li>
+          <li><strong>確認の仕組みとドキュメントを一緒に作らせる</strong> — 安心して直せるようになり、半年後の自分が助かる。</li>
+          <li><strong>読めることが、そのまま速さになる</strong> — 出てきたものを確かめられるので、細部まで指示しなくても任せられる。自分で書くより速い。</li>
+          <li><strong>AIは決めてくれない</strong> — 何を作るか、どこでやめるかを決めるのは、いつも人間の側。</li>
+        </ul>
+        <p class="closing">道具を自分で作る敷居は、もう高くない。</p>
+        <p class="cap" style="margin-top: 1.2rem;">※ このスライドと利用マニュアルも、同じやり方で作成しています。</p>
+      </div>
+    </section>
+
+    <!-- 20. 付録 つまずきどころ -->
+    <section class="slide" aria-roledescription="スライド" aria-label="20/24 付録 つまずきどころ">
+      <div class="inner">
+        <p class="eyebrow">APPENDIX B ／ つまずきどころ</p>
+        <h2>「AIでうまくいかない」を、どう避けたか</h2>
+        <p class="lead">AIを使った開発が止まる原因は、だいたい決まっています。今回それらをどう避けていたかを並べます。</p>
+        <div class="tablewrap">
+          <table class="csv wrap">
+            <thead>
+              <tr><th style="width: 42%;">よくあるつまずき</th><th>今回どうしていたか</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>丸ごと任せて一気に作らせる<br><small>期待とズレて、直すより作り直したくなる</small></td>
+                <td><strong>1機能ずつ小分けに頼んだ</strong>。毎回「動く状態」で止めるので、戻る場所を見失わない</td>
+              </tr>
+              <tr>
+                <td>環境の前提を伝えない<br><small>手元で動かないものができあがる</small></td>
+                <td>会社のルールを都度伝えた。<strong>exe化は駄目と分かった時点で撤退</strong>し、記録だけ残した</td>
+              </tr>
+              <tr>
+                <td>「できました」を検収せずに信じる<br><small>動かない・要件を満たさないものが残る</small></td>
+                <td><strong>自分で動かし、コードも読んで</strong>違和感を指摘した。直っていない箇所はその場で差し戻した</td>
+              </tr>
+              <tr>
+                <td>完璧な仕様を作ろうとする<br><small>考えている間に、何も生まれない</small></td>
+                <td>最初の<strong>2通のメッセージだけで着手</strong>。細部は使いながら決めた</td>
+              </tr>
+              <tr>
+                <td>作って終わりにする<br><small>半年後、自分でも直せなくなる</small></td>
+                <td>動作確認の仕組み・マニュアル・<strong>判断の経緯</strong>を残した。次に触るときに同じ検討をしない</td>
+              </tr>
+              <tr>
+                <td>実データをそのまま渡す・資料に載せる<br><small>気づかないうちに社外へ出る</small></td>
+                <td>資料の画面写真は<strong>ダミー値に差し替えた</strong>。仕組み自体もローカル完結で、外に出ない構成にした</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="punch">どれも特別な技術ではない。人に仕事を頼むときの作法と、ほとんど同じ。</p>
+      </div>
+    </section>
+
+    <!-- 21. 付録 他のAIとの比較 -->
+    <section class="slide" aria-roledescription="スライド" aria-label="21/24 付録 他のAIとの比較">
+      <div class="inner">
+        <p class="eyebrow">APPENDIX C ／ 他のAIとの比較</p>
+        <h2>他のAIでも、作れたのか</h2>
+        <p class="lead">コードを書くこと自体は、いまの主要なAIならどれも書けたはずです。<br>分かれ目は「自分のPCで動かして、結果を見て、直す」——このループを回せるかどうかでした。</p>
+        <div class="tablewrap">
+          <table class="csv wrap">
+            <thead>
+              <tr><th style="width: 34%;">AIの使い方</th><th>どこまでできたか</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>チャットだけで使う
+                  <small>ChatGPT ／ Gemini ／ Claude（ブラウザ版）／ Grok ／ Microsoft Copilot</small></td>
+                <td><strong>中核機能は作れた</strong>はず。ただし貼り付け → 実行 → エラーを書き戻す作業が、すべて手動になる。<strong>コードが読める人ほど、この往復が重く感じる</strong></td>
+              </tr>
+              <tr>
+                <td>コード実行つきチャット
+                  <small>ChatGPT のデータ分析 ／ Gemini のコード実行</small></td>
+                <td>ほぼ戦力にならない。<strong>隔離された環境</strong>なので、WindowsのGUIも手元のファイルもExcelも触れない</td>
+              </tr>
+              <tr>
+                <td>エディタの補完機能
+                  <small>GitHub Copilot（補完）／ Cursor のタブ補完 ／ Amazon Q Developer</small></td>
+                <td>書く速度は上がるが<strong>検証のループがない</strong>。方式変更や不具合の切り分けは人力のまま</td>
+              </tr>
+              <tr>
+                <td>エージェント型のツール
+                  <small><strong>Claude Code（今回はこれ）</strong> ／ Cursor（Agent）／ Cline ／ Windsurf ／ Google Antigravity ／ GitHub Copilot（エージェントモード）／ Codex CLI ／ Gemini CLI ／ Devin</small></td>
+                <td>今回の作業の<strong>大半が再現できた</strong>はず。境界線は「この形式かどうか」で、その中では大きな差はない</td>
+              </tr>
+              <tr>
+                <td>調べる・まとめるツール
+                  <small>NotebookLM ／ Deep Research（ChatGPT・Gemini）／ Microsoft 365 Copilot</small></td>
+                <td><strong>そもそも用途が違う</strong>。開発の道具ではないので、この仕組みは作れない。ただし<strong>着手前の下調べ</strong>や、<strong>できあがった資料の要約・説明・想定問答づくり</strong>には向いている</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="cap" style="margin-top: 1.2rem;">※ サービス名は代表的な例です。各ツールを実際に試した比較ではなく、公開されている機能からの推測にもとづきます。この分野は変化が速いため、現時点での目安として扱ってください。</p>
+      </div>
+    </section>
+
+    <!-- 22. 付録 境界線 -->
+    <section class="slide" aria-roledescription="スライド" aria-label="22/24 付録 境界線">
+      <div class="inner">
+        <p class="eyebrow">APPENDIX C ／ 境界線</p>
+        <h2>効いたのは「書く」以外の作業</h2>
+        <div class="cols">
+          <div>
+            <p class="cap" style="margin: 0 0 0.8rem;">今回、Claude Code が人の手を借りずに行った作業</p>
+            <ul class="points">
+              <li>スクリプトを実行し、<strong>検証結果を読んで直す</strong></li>
+              <li>exe化を試し、<strong>実行がブロックされる原因を切り分ける</strong></li>
+              <li>デスクトップやスタートアップの<strong>ショートカットを作成・削除する</strong></li>
+              <li>Excelを操作して<strong>マニュアルを生成</strong>、アプリを起動して<strong>画面を自動撮影</strong></li>
+            </ul>
+          </div>
+          <div>
+            <div class="card">
+              <h3>どのAIでも変わらないこと</h3>
+              <p>「exeは実行できない」「スタートアップは使えない」——<strong>会社のルールは、伝えて初めて設計に反映される</strong>。休憩の仕様を3回変えたのも、使ってみた本人の判断だった。</p>
+            </div>
+            <p class="punch" style="margin-top: 1.4rem;">道具の差は「実行できるか」。<br>中身の差は、やはり人が決める。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 23. 付録 使いこなしの段階 -->
+    <section class="slide" aria-roledescription="スライド" aria-label="23/24 付録 使いこなしの段階">
+      <div class="inner">
+        <p class="eyebrow">APPENDIX D ／ 自己評価</p>
+        <h2>使いこなしは、どの段階にあるか</h2>
+        <p class="lead">「使いこなし率◯％」を測る客観的な物差しは、いまのところ存在しません。<br>代わりに、AIとの付き合い方を5つの段階に分けて、今回どこまで来たかを振り返ります。</p>
+        <div class="flow">
+          <div class="step">
+            <div class="t time">段階1</div>
+            <div class="rail"></div>
+            <div class="body">
+              <h3>聞く</h3>
+              <p>分からないことを質問する。調べものの相手として使う。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="t time">段階2</div>
+            <div class="rail"></div>
+            <div class="body">
+              <h3>書かせる</h3>
+              <p>文章やコードを作らせる。出てきたものは自分で確かめ、自分で動かす。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="t time">段階3</div>
+            <div class="rail"></div>
+            <div class="body">
+              <h3>任せる</h3>
+              <p>実行と検証まで任せる。こちらは「どう動いてほしいか」と「うまくいっていない点」を伝える役に回る。</p>
+            </div>
+          </div>
+          <div class="step hl">
+            <div class="t time">段階4</div>
+            <div class="rail"></div>
+            <div class="body">
+              <h3>仕組みにする　← 今回はここ</h3>
+              <p>繰り返す作業を自動化し、決めた理由を記録に残す。動作確認・マニュアル生成・画面撮影まで仕組みに組み込んだ。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="t time">段階5</div>
+            <div class="rail"></div>
+            <div class="body">
+              <h3>広げる　← 着手したところ</h3>
+              <p>自分だけの道具で終わらせず、他の人が使える形にする。この資料と利用マニュアルが、その最初の一歩。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 24. 付録 到達点の確認 -->
+    <section class="slide" aria-roledescription="スライド" aria-label="24/24 付録 到達点の確認">
+      <div class="inner">
+        <p class="eyebrow">APPENDIX D ／ 到達点</p>
+        <h2>数字ではなく、行動で確かめる</h2>
+        <p class="lead">「AIをうまく使えているか」は、次の6つで測れると思います。特別なことではなく、どれも人に仕事を頼むときと同じです。</p>
+        <ul class="checks">
+          <li><strong>目的を自分の言葉で言えるか</strong> — 何に困っていて、どうなれば成功かを説明できる。
+            <small>今回：最初の2通で、前回入力の保持・CSVへの蓄積・Excelへ貼る流れまで伝えていた</small></li>
+          <li><strong>解き方を自分で決められるか</strong> — 提案を鵜呑みにせず方式を選び、やめる判断もできる。
+            <small>今回：AIに書かせる案から、15分ごとの入力バッチへ切り替えた</small></li>
+          <li><strong>AIが知らない前提を渡せるか</strong> — 環境・社内ルール・これまでの経緯は、外からは見えない。
+            <small>今回：「exeは実行できない」「スタートアップは使えない」</small></li>
+          <li><strong>出てきたものを検収できるか</strong> — 動かして確かめる。読んで違和感に気づく。
+            <small>今回：文字の折り返しの気持ち悪さを、CSSの指定（max-width）が原因だと特定して指摘した</small></li>
+          <li><strong>渡していい情報の線引きができるか</strong> — 出せない情報を、渡さない・資料に載せない。
+            <small>今回：画面写真の案件名をダミー値へ差し替えた</small></li>
+          <li><strong>一度きりにせず、仕組みと記録に残せるか</strong> — 次に触る人（半年後の自分を含む）が困らない形にする。
+            <small>今回：動作確認・マニュアル生成・画面撮影を、繰り返せる形にした</small></li>
+        </ul>
+        <p class="closing">問うべきは「何％使えているか」ではなく、<br>「どこまで任せて、どこで自分が判断するか」。</p>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<nav class="navbar" aria-label="スライド操作">
+  <button class="navbtn" id="prev" aria-label="前のスライド">←</button>
+  <button class="navbtn" id="next" aria-label="次のスライド">→</button>
+  <div class="clock"><span id="clockTime">9:00</span><small id="clockPage">01 / 24</small></div>
+  <div class="ruler" id="ruler" role="tablist" aria-label="スライド一覧"></div>
+  <span class="keyhint">← → キーで移動</span>
+</nav>
+
+<script>
+  (function () {
+    var track = document.getElementById('track');
+    var slides = track.children;
+    var total = slides.length;
+    var ruler = document.getElementById('ruler');
+    var clockTime = document.getElementById('clockTime');
+    var clockPage = document.getElementById('clockPage');
+    var current = 0;
+
+    for (var i = 0; i < total; i++) {
+      var b = document.createElement('button');
+      b.className = 'tick' + (i % 4 === 0 ? ' hour' : '');
+      b.setAttribute('aria-label', 'スライド ' + (i + 1));
+      (function (n) {
+        b.addEventListener('click', function () { go(n); });
+      })(i);
+      ruler.appendChild(b);
+    }
+
+    function slotLabel(n) {
+      var m = 9 * 60 + n * 15;
+      return Math.floor(m / 60) + ':' + ('0' + (m % 60)).slice(-2);
+    }
+
+    function go(n) {
+      current = Math.max(0, Math.min(total - 1, n));
+      track.style.transform = 'translateX(-' + current * 100 + '%)';
+      clockTime.textContent = slotLabel(current);
+      clockPage.textContent = ('0' + (current + 1)).slice(-2) + ' / ' + total;
+      var ticks = ruler.children;
+      for (var i = 0; i < ticks.length; i++) {
+        if (i === current) ticks[i].setAttribute('aria-current', 'true');
+        else ticks[i].removeAttribute('aria-current');
+      }
+      if (history.replaceState) history.replaceState(null, '', '#' + (current + 1));
+    }
+
+    document.getElementById('prev').addEventListener('click', function () { go(current - 1); });
+    document.getElementById('next').addEventListener('click', function () { go(current + 1); });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); go(current + 1); }
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(current - 1); }
+      else if (e.key === 'Home') { e.preventDefault(); go(0); }
+      else if (e.key === 'End') { e.preventDefault(); go(total - 1); }
+    });
+
+    var fromHash = parseInt((location.hash || '').replace('#', ''), 10);
+    go(isNaN(fromHash) ? 0 : fromHash - 1);
+
+    // 補足: マニュアルを「クリックしたらExcelが直接開く」形にはできなかった。
+    // ブラウザは安全のためローカルアプリを起動できず、唯一の抜け道である Office の
+    // ms-excel:ofe|u| プロトコルも、日本語を含むパスをChromeがURLエンコードして渡す一方で
+    // Excel側がデコードしないため、ファイルを見つけられない（file:/// 形式も「ダウンロードできません」で失敗）。
+    // そのため通常のリンク（クリックでダウンロード）のままにし、
+    // 同じフォルダのファイルを直接開くよう画面上で案内している。
+  })();
+</script>
+
+</html>
