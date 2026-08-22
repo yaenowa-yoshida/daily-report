@@ -1007,7 +1007,7 @@ PRJ-12 商品ページ改修
         <div class="tablewrap">
           <table class="csv wrap">
             <thead>
-              <tr><th style="width: 34%;">AIの使い方</th><th>どこまでできたか</th></tr>
+              <tr><th style="width: 34%;">AIの使い方（例）</th><th>この使い方だと、どこまでできたか</th></tr>
             </thead>
             <tbody>
               <tr>
@@ -1016,29 +1016,32 @@ PRJ-12 商品ページ改修
                 <td><strong>中核機能は作れた</strong>はず。ただし貼り付け → 実行 → エラーを書き戻す作業が、すべて手動になる。<strong>コードが読める人ほど、この往復が重く感じる</strong></td>
               </tr>
               <tr>
-                <td>コード実行つきチャット
+                <td>サンドボックス実行つきチャット
                   <small>ChatGPT のデータ分析 ／ Gemini のコード実行</small></td>
-                <td>ほぼ戦力にならない。<strong>隔離された環境</strong>なので、WindowsのGUIも手元のファイルもExcelも触れない</td>
+                <td>実行がサービス側の環境で完結するため、<strong>今回の用途（手元のWindowsのGUI操作・ローカルファイルやExcelの読み書き）には向かない</strong></td>
               </tr>
               <tr>
                 <td>エディタの補完機能
                   <small>GitHub Copilot（補完）／ Cursor のタブ補完 ／ Amazon Q Developer</small></td>
-                <td>書く速度は上がるが<strong>検証のループがない</strong>。方式変更や不具合の切り分けは人力のまま</td>
+                <td>書く速度は上がる一方、<strong>実行して結果を見て直すところまでは含まれない</strong>使い方。方式変更や不具合の切り分けは人が行う</td>
               </tr>
               <tr>
                 <td>エージェント型のツール
-                  <small><strong>Claude Code（今回はこれ）</strong> ／ Cursor（Agent）／ Cline ／ Windsurf ／ Google Antigravity ／ GitHub Copilot（エージェントモード）／ Codex CLI ／ Gemini CLI ／ Devin</small></td>
+                  <small><strong>Claude Code（今回はこれ）</strong> ／ Cursor（Agent）／ Cline ／ Windsurf ／ GitHub Copilot（エージェントモード）／ Codex CLI ／ Gemini CLI ／ Devin</small></td>
                 <td>今回の作業の<strong>大半が再現できた</strong>はず。境界線は「この形式かどうか」で、その中では大きな差はない</td>
               </tr>
               <tr>
                 <td>調べる・まとめるツール
                   <small>NotebookLM ／ Deep Research（ChatGPT・Gemini）／ Microsoft 365 Copilot</small></td>
-                <td><strong>そもそも用途が違う</strong>。開発の道具ではないので、この仕組みは作れない。ただし<strong>着手前の下調べ</strong>や、<strong>できあがった資料の要約・説明・想定問答づくり</strong>には向いている</td>
+                <td>用途が異なり、<strong>この仕組みを作る場面では使っていない</strong>。<strong>着手前の下調べ</strong>や、<strong>できあがった資料の要約・説明・想定問答づくり</strong>には使える</td>
               </tr>
             </tbody>
           </table>
         </div>
-        <p class="cap" style="margin-top: 1.2rem;">※ サービス名は代表的な例です。各ツールを実際に試した比較ではなく、公開されている機能からの推測にもとづきます。この分野は変化が速いため、現時点での目安として扱ってください。</p>
+        <p class="cap" style="margin-top: 1.2rem;">
+          ※ 表に挙げたサービス名は、それぞれの「使い方」に当たる代表的な例です。当社が各サービスを実際に検証して比較したものではなく、今回 Claude Code で行った作業を基準に、使い方の違いを整理したものです（2026年8月時点の理解にもとづきます）。各サービスの現在の機能は提供元の公開情報をご確認ください。<br>
+          ※ 記載の各社名・製品名は各社の商標または登録商標です。当社は各社と提携・監修等の関係にありません。
+        </p>
       </div>
     </section>
 
